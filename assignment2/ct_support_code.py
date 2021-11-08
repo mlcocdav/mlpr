@@ -56,6 +56,7 @@ def minimize_list(cost, init_list, args):
     opt = {'maxiter': 500, 'disp': False}
     init, unwrap = params_wrap(init_list)
     def wrap_cost(vec, *args):
+        print(unwrap(vec))
         E, params_bar = cost(unwrap(vec), *args)
         vec_bar, _ = params_wrap(params_bar)
         return E, vec_bar
@@ -319,56 +320,139 @@ def nn_rmse(params, XX, yy):
 # q3_params = (train_w_lr, train_b_lr, WW.T, BB)
 # nn_q3_params = fit_nn_gradopt(X_train, y_train, 30, init=q3_params)
 
+#
+# def train_nn_reg(X_train, y_train, X_val, y_val, alpha):
+#     params = fit_nn_gradopt(X_train, y_train, alpha)
+#     return nn_rmse(params, X_val, y_val)
+#
+# def prob_imp(mu, cov, yy, alphas, alpha):
+#     a_idx = np.where(alphas==alpha)[0][0]
+#     #pi = norm.cdf((mu[a_idx]-np.max(yy))/np.sqrt(cov[a_idx,a_idx]))
+#     pi = (mu[a_idx] - np.max(yy)) / np.sqrt(cov[a_idx, a_idx])
+#     return pi
+#
+# alphas = np.arange(0, 50, 0.02)
+# idx = np.round(len(alphas)*np.array([0.25,0.5,0.75])).astype(int)
+# y_train_gp = np.array([])
+# train_alphas = alphas[idx]
+# for alpha in train_alphas:
+#     y_train_gp = np.append(y_train_gp, -np.log(train_nn_reg(X_train, y_train, X_val, y_val, alpha)))
+# nn_rand_params = fit_nn_gradopt(X_train, y_train, 30)
+# baseline = np.log(nn_rmse(nn_rand_params, X_val, y_val))
+# #y_train_alpha = baseline + y_train_alpha
+# test_alphas = np.delete(alphas, idx)
+#
+# for i in range(5):
+#     mu, cov = gp_post_par(test_alphas, train_alphas, y_train_gp)
+#
+#     plt.plot(test_alphas, mu, '-k', linewidth=2)
+#     std = np.sqrt(np.diag(cov))
+#     plt.plot(test_alphas, mu + 2 * std, '--k', linewidth=2)
+#     plt.plot(test_alphas, mu - 2 * std, '--k', linewidth=2)
+#     plt.show()
+#
+#     best_alpha = test_alphas[0]
+#     best_pi = - 1e100
+#     for alpha in test_alphas:
+#         pi = prob_imp(mu, cov, y_train_gp, test_alphas, alpha)
+#         if pi > best_pi:
+#             best_pi = pi
+#             best_alpha = alpha
+#     print(best_alpha, best_pi)
+#     train_alphas = np.append(train_alphas, best_alpha)
+#     test_alphas = np.delete(test_alphas, np.where(test_alphas==best_alpha))
+#     y_train_gp = np.append(y_train_gp, - np.log(train_nn_reg(X_train, y_train, X_val, y_val, best_alpha)))
+#     #y_train_alpha = np.append(y_train_alpha, baseline -np.log(train_nn_reg(X_train, y_train, X_val, y_val, best_alpha)))
+# best_alpha = train_alphas[np.argmax(y_train_gp)]
+#
+# val_rmse = train_nn_reg(X_train, y_train, X_val, y_val, best_alpha)
+# test_rmse = train_nn_reg(X_train, y_train, X_test, y_test, best_alpha)
+# print(train_alphas)
+# print('Best alpha: ', best_alpha)
+# print('Val RMSE: ', val_rmse)
+# print('Test RMSE: ', test_rmse)
 
-def train_nn_reg(X_train, y_train, X_val, y_val, alpha):
-    params = fit_nn_gradopt(X_train, y_train, alpha)
-    return nn_rmse(params, X_val, y_val)
 
-def prob_imp(mu, cov, yy, alphas, alpha):
-    a_idx = np.where(alphas==alpha)[0][0]
-    #pi = norm.cdf((mu[a_idx]-np.max(yy))/np.sqrt(cov[a_idx,a_idx]))
-    pi = (mu[a_idx] - np.max(yy)) / np.sqrt(cov[a_idx, a_idx])
-    return pi
+def nn2_cost(params, X, yy=None, alpha=None):
+    """NN_COST simple neural network cost function and gradients, or predictions
 
-# print(train_nn_reg(X_train, y_train, X_test, y_test, 30))
-# exit()
-alphas = np.arange(0, 50, 0.02)
-#alphas = np.arange(0, 10, 0.02)
-idx = np.random.randint(0,len(alphas),size=3)
-y_train_gp = np.array([])
-train_alphas = alphas[idx]
-for alpha in train_alphas:
-    y_train_gp = np.append(y_train_gp, -np.log(train_nn_reg(X_train, y_train, X_val, y_val, alpha)))
-nn_rand_params = fit_nn_gradopt(X_train, y_train, 30)
-baseline = np.log(nn_rmse(nn_rand_params, X_val, y_val))
-#y_train_alpha = baseline + y_train_alpha
-test_alphas = np.delete(alphas, idx)
+           E, params_bar = nn_cost([ww, bb, V, bk], X, yy, alpha)
+                    pred = nn_cost([ww, bb, V, bk], X)
 
-for i in range(5):
-    mu, cov = gp_post_par(test_alphas, train_alphas, y_train_gp)
+     Cost function E can be minimized with minimize_list
 
-    plt.plot(test_alphas, mu, '-k', linewidth=2)
-    std = np.sqrt(np.diag(cov))
-    plt.plot(test_alphas, mu + 2 * std, '--k', linewidth=2)
-    plt.plot(test_alphas, mu - 2 * std, '--k', linewidth=2)
-    plt.show()
+     Inputs:
+             params (ww, bb, V, bk), where:
+                    --------------------------------
+                        ww K,  hidden-output weights
+                        bb     scalar output bias
+                         V K,D hidden-input weights
+                        bk K,  hidden biases
+                    --------------------------------
+                  X N,D input design matrix
+                 yy N,  regression targets
+              alpha     scalar regularization for weights
 
-    best_alpha = test_alphas[0]
-    best_pi = - 1e100
-    for alpha in test_alphas:
-        pi = prob_imp(mu, cov, y_train_gp, test_alphas, alpha)
-        if pi > best_pi:
-            best_pi = pi
-            best_alpha = alpha
-    print(best_alpha, best_pi)
-    train_alphas = np.append(train_alphas, best_alpha)
-    test_alphas = np.delete(test_alphas, np.where(test_alphas==best_alpha))
-    y_train_gp = np.append(y_train_gp, - np.log(train_nn_reg(X_train, y_train, X_val, y_val, best_alpha)))
-    #y_train_alpha = np.append(y_train_alpha, baseline -np.log(train_nn_reg(X_train, y_train, X_val, y_val, best_alpha)))
-best_alpha = train_alphas[np.argmax(y_train_gp)]
+     Outputs:
+                     E  sum of squares error
+            params_bar  gradients wrt params, same format as params
+     OR
+               pred N,  predictions if only params and X are given as inputs
+    """
+    # Unpack parameters from list
+    ww, bb, V, bk, V2, b2 = params
 
-val_rmse = train_nn_reg(X_train, y_train, X_val, y_val, best_alpha)
-test_rmse = train_nn_reg(X_train, y_train, X_test, y_test, best_alpha)
-print('Best alpha: ', best_alpha)
-print('Val RMSE: ', val_rmse)
-print('Test RMSE: ', test_rmse)
+    # Forwards computation of cost
+    A = np.dot(X, V.T) + bk[None, :]  # N,K
+    P = 1 / (1 + np.exp(-A))  # N,K
+    B = np.dot(P, V2.T) + b2[None, :]  #
+    P2 = 1 / (1 + np.exp(-B))  # N,K
+    F = np.dot(P2, ww) + bb  # N,
+    if yy is None:
+        # user wants prediction rather than training signal:
+        return F
+    res = F - yy  # N,
+    E = np.dot(res, res) + alpha * (np.sum(V * V) + np.dot(ww, ww) + np.sum(V2 * V2) )  # 1x1
+
+    # Reverse computation of gradients
+    F_bar = 2 * res  # N,
+    ww_bar = np.dot(P.T, F_bar) + 2 * alpha * ww  # K,
+    bb_bar = np.sum(F_bar)  # scalar
+    P_bar = np.dot(F_bar[:, None], ww[None, :])  # N,
+    A_bar = P_bar * P * (1 - P)  # N,
+    V_bar = np.dot(A_bar.T, X) + 2 * alpha * V  # K,
+    bk_bar = np.sum(A_bar, 0)
+
+    return E, (ww_bar, bb_bar, V_bar, bk_bar, V2_bar, b2_bar)
+
+
+def fit_nn2_gradopt(X, yy, alpha, K=64, H=32, init=None):
+    D = X.shape[1]
+    args = (X, yy, alpha)
+    if init == None:
+        init = (np.random.randn(H), np.array(0), np.random.randn(K, D), np.random.randn(K),
+                np.random.randn(H, K), np.random.randn(H))
+    ww, bb, V, bk, V2, b2 = minimize_list(nn2_cost, init, args)
+    return ww, bb, V, bk, V2, b2
+
+
+def nn2_rmse(params, XX, yy):
+    ww, bb, V, bk, V2, b2 = params
+
+    A = np.dot(XX, V.T) + bk[None, :]  # N,H
+    P = 1 / (1 + np.exp(-A))  # N,H
+    B = np.dot(P, V2.T) + b2[None, :]  #
+    P2 = 1 / (1 + np.exp(-B))  # N,K
+    F = np.dot(P2, ww) + bb  # N,
+    E = np.sqrt(np.mean((F - yy) ** 2))
+
+
+    return E
+
+
+K = 64
+H = 32
+# params = (np.random.randn(H), np.array(0), np.random.randn(K, D), np.random.randn(K),
+#                 np.random.randn(H,K), np.random.randn(H))
+# print(nn2_rmse(params,X_val, y_val))
+nn_rand_params = fit_nn2_gradopt(X_train, y_train, 30)
