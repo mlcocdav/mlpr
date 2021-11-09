@@ -10,6 +10,7 @@ from scipy.linalg import cho_factor, cho_solve
 from scipy.stats import norm
 import matplotlib.pyplot as plt
 
+
 def params_unwrap(param_vec, shapes, sizes):
     """Helper routine for minimize_list"""
     args = []
@@ -53,10 +54,9 @@ def minimize_list(cost, init_list, args):
     The Matlab code comes with a different optimizer, so won't give the same
     results.
     """
-    opt = {'maxiter': 500, 'disp': False}
+    opt = {'maxiter': 1000, 'disp': False}
     init, unwrap = params_wrap(init_list)
     def wrap_cost(vec, *args):
-        print(unwrap(vec))
         E, params_bar = cost(unwrap(vec), *args)
         vec_bar, _ = params_wrap(params_bar)
         return E, vec_bar
@@ -248,13 +248,16 @@ def gp_post_par(X_rest, X_obs, yy, sigma_y=0.01, ell=5.0, sigma_f=0.01):
 
     return rest_cond_mu, rest_cond_cov
 
-
-
 # my shit from here
 data = np.load('ct_data.npz')
 X_train = data['X_train']; X_val = data['X_val']; X_test = data['X_test']
 y_train = data['y_train']; y_val = data['y_val']; y_test = data['y_test']
 alpha=30
+
+#a = fit_linreg_gradopt(X_train, y_train, alpha)
+#exit()
+
+
 #
 # #train_w2, train_b2 = fit_linreg_gradopt(X_train, y_train, alpha)
 # K = 20 # number of thresholded classification problems to fit
@@ -320,57 +323,57 @@ def nn_rmse(params, XX, yy):
 # q3_params = (train_w_lr, train_b_lr, WW.T, BB)
 # nn_q3_params = fit_nn_gradopt(X_train, y_train, 30, init=q3_params)
 
-#
-# def train_nn_reg(X_train, y_train, X_val, y_val, alpha):
-#     params = fit_nn_gradopt(X_train, y_train, alpha)
-#     return nn_rmse(params, X_val, y_val)
-#
-# def prob_imp(mu, cov, yy, alphas, alpha):
-#     a_idx = np.where(alphas==alpha)[0][0]
-#     #pi = norm.cdf((mu[a_idx]-np.max(yy))/np.sqrt(cov[a_idx,a_idx]))
-#     pi = (mu[a_idx] - np.max(yy)) / np.sqrt(cov[a_idx, a_idx])
-#     return pi
-#
-# alphas = np.arange(0, 50, 0.02)
-# idx = np.round(len(alphas)*np.array([0.25,0.5,0.75])).astype(int)
-# y_train_gp = np.array([])
-# train_alphas = alphas[idx]
-# for alpha in train_alphas:
-#     y_train_gp = np.append(y_train_gp, -np.log(train_nn_reg(X_train, y_train, X_val, y_val, alpha)))
-# nn_rand_params = fit_nn_gradopt(X_train, y_train, 30)
-# baseline = np.log(nn_rmse(nn_rand_params, X_val, y_val))
-# #y_train_alpha = baseline + y_train_alpha
-# test_alphas = np.delete(alphas, idx)
-#
-# for i in range(5):
-#     mu, cov = gp_post_par(test_alphas, train_alphas, y_train_gp)
-#
-#     plt.plot(test_alphas, mu, '-k', linewidth=2)
-#     std = np.sqrt(np.diag(cov))
-#     plt.plot(test_alphas, mu + 2 * std, '--k', linewidth=2)
-#     plt.plot(test_alphas, mu - 2 * std, '--k', linewidth=2)
-#     plt.show()
-#
-#     best_alpha = test_alphas[0]
-#     best_pi = - 1e100
-#     for alpha in test_alphas:
-#         pi = prob_imp(mu, cov, y_train_gp, test_alphas, alpha)
-#         if pi > best_pi:
-#             best_pi = pi
-#             best_alpha = alpha
-#     print(best_alpha, best_pi)
-#     train_alphas = np.append(train_alphas, best_alpha)
-#     test_alphas = np.delete(test_alphas, np.where(test_alphas==best_alpha))
-#     y_train_gp = np.append(y_train_gp, - np.log(train_nn_reg(X_train, y_train, X_val, y_val, best_alpha)))
-#     #y_train_alpha = np.append(y_train_alpha, baseline -np.log(train_nn_reg(X_train, y_train, X_val, y_val, best_alpha)))
-# best_alpha = train_alphas[np.argmax(y_train_gp)]
-#
-# val_rmse = train_nn_reg(X_train, y_train, X_val, y_val, best_alpha)
-# test_rmse = train_nn_reg(X_train, y_train, X_test, y_test, best_alpha)
-# print(train_alphas)
-# print('Best alpha: ', best_alpha)
-# print('Val RMSE: ', val_rmse)
-# print('Test RMSE: ', test_rmse)
+
+def train_nn_reg(X_train, y_train, X_val, y_val, alpha):
+    params = fit_nn_gradopt(X_train, y_train, alpha)
+    return nn_rmse(params, X_val, y_val)
+
+def prob_imp(mu, cov, yy, alphas, alpha):
+    a_idx = np.where(alphas==alpha)[0][0]
+    #pi = norm.cdf((mu[a_idx]-np.max(yy))/np.sqrt(cov[a_idx,a_idx]))
+    pi = (mu[a_idx] - np.max(yy)) / np.sqrt(cov[a_idx, a_idx])
+    return pi
+
+alphas = np.arange(0, 50, 0.02)
+idx = np.round(len(alphas)*np.array([0.25,0.5,0.75])).astype(int)
+y_train_gp = np.array([])
+train_alphas = alphas[idx]
+for alpha in train_alphas:
+    y_train_gp = np.append(y_train_gp, -np.log(train_nn_reg(X_train, y_train, X_val, y_val, alpha)))
+nn_rand_params = fit_nn_gradopt(X_train, y_train, 30)
+baseline = np.log(nn_rmse(nn_rand_params, X_val, y_val))
+y_train_gp = baseline + y_train_gp
+test_alphas = np.delete(alphas, idx)
+
+for i in range(5):
+    mu, cov = gp_post_par(test_alphas, train_alphas, y_train_gp)
+
+    # plt.plot(test_alphas, mu, '-k', linewidth=2)
+    # std = np.sqrt(np.diag(cov))
+    # plt.plot(test_alphas, mu + 2 * std, '--k', linewidth=2)
+    # plt.plot(test_alphas, mu - 2 * std, '--k', linewidth=2)
+    # plt.show()
+
+    best_alpha = test_alphas[0]
+    best_pi = - 1e100
+    for alpha in test_alphas:
+        pi = prob_imp(mu, cov, y_train_gp, test_alphas, alpha)
+        if pi > best_pi:
+            best_pi = pi
+            best_alpha = alpha
+    print(best_alpha, best_pi)
+    train_alphas = np.append(train_alphas, best_alpha)
+    test_alphas = np.delete(test_alphas, np.where(test_alphas==best_alpha))
+    #y_train_gp = np.append(y_train_gp, - np.log(train_nn_reg(X_train, y_train, X_val, y_val, best_alpha)))
+    y_train_gp = np.append(y_train_gp, baseline -np.log(train_nn_reg(X_train, y_train, X_val, y_val, best_alpha)))
+best_alpha = train_alphas[np.argmax(y_train_gp)]
+
+val_rmse = train_nn_reg(X_train, y_train, X_val, y_val, best_alpha)
+test_rmse = train_nn_reg(X_train, y_train, X_test, y_test, best_alpha)
+print(train_alphas)
+print('Best alpha: ', best_alpha)
+print('Val RMSE: ', val_rmse)
+print('Test RMSE: ', test_rmse)
 
 
 def nn2_cost(params, X, yy=None, alpha=None):
@@ -455,4 +458,4 @@ H = 32
 # params = (np.random.randn(H), np.array(0), np.random.randn(K, D), np.random.randn(K),
 #                 np.random.randn(H,K), np.random.randn(H))
 # print(nn2_rmse(params,X_val, y_val))
-nn_rand_params = fit_nn2_gradopt(X_train, y_train, 30)
+#nn_rand_params = fit_nn2_gradopt(X_train, y_train, 30)
