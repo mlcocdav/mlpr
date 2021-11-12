@@ -330,50 +330,50 @@ def train_nn_reg(X_train, y_train, X_val, y_val, alpha):
 
 def prob_imp(mu, cov, yy, alphas, alpha):
     a_idx = np.where(alphas==alpha)[0][0]
-    #pi = norm.cdf((mu[a_idx]-np.max(yy))/np.sqrt(cov[a_idx,a_idx]))
-    pi = (mu[a_idx] - np.max(yy)) / np.sqrt(cov[a_idx, a_idx])
+    pi = norm.cdf((mu[a_idx]-np.max(yy))/np.sqrt(cov[a_idx,a_idx]))
+    #pi = (mu[a_idx] - np.max(yy)) / np.sqrt(cov[a_idx, a_idx])
     return pi
 
-alphas = np.arange(0, 50, 0.02)
-idx = np.round(len(alphas)*np.array([0.25,0.5,0.75])).astype(int)
-y_train_gp = np.array([])
-train_alphas = alphas[idx]
-for alpha in train_alphas:
-    y_train_gp = np.append(y_train_gp, -np.log(train_nn_reg(X_train, y_train, X_val, y_val, alpha)))
-nn_rand_params = fit_nn_gradopt(X_train, y_train, 30)
-baseline = np.log(nn_rmse(nn_rand_params, X_val, y_val))
-y_train_gp = baseline + y_train_gp
-test_alphas = np.delete(alphas, idx)
-
-for i in range(5):
-    mu, cov = gp_post_par(test_alphas, train_alphas, y_train_gp)
-
-    # plt.plot(test_alphas, mu, '-k', linewidth=2)
-    # std = np.sqrt(np.diag(cov))
-    # plt.plot(test_alphas, mu + 2 * std, '--k', linewidth=2)
-    # plt.plot(test_alphas, mu - 2 * std, '--k', linewidth=2)
-    # plt.show()
-
-    best_alpha = test_alphas[0]
-    best_pi = - 1e100
-    for alpha in test_alphas:
-        pi = prob_imp(mu, cov, y_train_gp, test_alphas, alpha)
-        if pi > best_pi:
-            best_pi = pi
-            best_alpha = alpha
-    print(best_alpha, best_pi)
-    train_alphas = np.append(train_alphas, best_alpha)
-    test_alphas = np.delete(test_alphas, np.where(test_alphas==best_alpha))
-    #y_train_gp = np.append(y_train_gp, - np.log(train_nn_reg(X_train, y_train, X_val, y_val, best_alpha)))
-    y_train_gp = np.append(y_train_gp, baseline -np.log(train_nn_reg(X_train, y_train, X_val, y_val, best_alpha)))
-best_alpha = train_alphas[np.argmax(y_train_gp)]
-
-val_rmse = train_nn_reg(X_train, y_train, X_val, y_val, best_alpha)
-test_rmse = train_nn_reg(X_train, y_train, X_test, y_test, best_alpha)
-print(train_alphas)
-print('Best alpha: ', best_alpha)
-print('Val RMSE: ', val_rmse)
-print('Test RMSE: ', test_rmse)
+# alphas = np.arange(0, 50, 0.02)
+# idx = np.round(len(alphas)*np.array([0.25,0.5,0.75])).astype(int)
+# y_train_gp = np.array([])
+# train_alphas = alphas[idx]
+# for alpha in train_alphas:
+#     y_train_gp = np.append(y_train_gp, -np.log(train_nn_reg(X_train, y_train, X_val, y_val, alpha)))
+# nn_rand_params = fit_nn_gradopt(X_train, y_train, 30)
+# baseline = np.log(nn_rmse(nn_rand_params, X_val, y_val))
+# y_train_gp = baseline + y_train_gp
+# test_alphas = np.delete(alphas, idx)
+#
+# for i in range(5):
+#     mu, cov = gp_post_par(test_alphas, train_alphas, y_train_gp)
+#
+#     plt.plot(test_alphas, mu, '-k', linewidth=2)
+#     std = np.sqrt(np.diag(cov))
+#     plt.plot(test_alphas, mu + 2 * std, '--k', linewidth=2)
+#     plt.plot(test_alphas, mu - 2 * std, '--k', linewidth=2)
+#     plt.show()
+#
+#     best_alpha = test_alphas[0]
+#     best_pi = - 1e100
+#     for alpha in test_alphas:
+#         pi = prob_imp(mu, cov, y_train_gp, test_alphas, alpha)
+#         if pi > best_pi:
+#             best_pi = pi
+#             best_alpha = alpha
+#     #print(best_alpha, best_pi)
+#     train_alphas = np.append(train_alphas, best_alpha)
+#     test_alphas = np.delete(test_alphas, np.where(test_alphas==best_alpha))
+#     #y_train_gp = np.append(y_train_gp, - np.log(train_nn_reg(X_train, y_train, X_val, y_val, best_alpha)))
+#     y_train_gp = np.append(y_train_gp, baseline -np.log(train_nn_reg(X_train, y_train, X_val, y_val, best_alpha)))
+# best_alpha = train_alphas[np.argmax(y_train_gp)]
+#
+# val_rmse = train_nn_reg(X_train, y_train, X_val, y_val, best_alpha)
+# test_rmse = train_nn_reg(X_train, y_train, X_test, y_test, best_alpha)
+# #print(train_alphas)
+# print('Best alpha: ', best_alpha)
+# print('Val RMSE: ', val_rmse)
+# print('Test RMSE: ', test_rmse)
 
 
 def nn2_cost(params, X, yy=None, alpha=None):
